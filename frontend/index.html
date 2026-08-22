@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sentix | Emotion-Aware AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- LEFT PANEL -->
+    <aside class="sidebar">
+        <button id="toggle-sidebar" class="icon-btn sidebar-toggle-btn ghost" type="button" aria-label="Toggle sidebar">&lt;</button>
+
+        <div class="sidebar-inner">
+            <div class="sidebar-top">
+                <div class="brand-row">
+                    <div class="brand-dot"></div>
+                    <span class="brand-text">Sentix</span>
+                </div>
+            </div>
+
+            <button id="new-chat" class="new-chat-btn">
+                <span class="btn-icon">+</span>
+                <span class="btn-text">New chat</span>
+            </button>
+
+            <div class="theme-toggle">
+                <span class="toggle-label">Theme</span>
+                <label class="switch">
+                    <input id="theme-switch" type="checkbox" aria-label="Toggle dark mode">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="sidebar-section">Your chats</div>
+            <div id="chat-list" class="chat-list"></div>
+        </div>
+    </aside>
+
+    <!-- RIGHT CHAT PANEL -->
+    <main class="chat-area">
+
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <div class="profile">
+                    <img src="https://i.pinimg.com/564x/8d/ff/49/8dff49985d0d8afa53751d9ba8907aed.jpg" alt="Mika avatar" />
+                    <div>
+                        <h3 id="chat-title">Sentix AI</h3>
+                        <span class="status">Active now</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-header-actions" style="position: relative;">
+                <button id="settings-btn" class="icon-btn glass-icon" type="button" aria-label="Settings">
+                    ⚙
+                </button>
+                <div id="settings-menu" class="settings-menu hidden">
+                    <div class="settings-item">
+                        <span>UI Scale</span>
+                        <div class="zoom-controls">
+                            <button id="zoom-out-btn" class="zoom-btn" type="button" title="Decrease size">−</button>
+                            <span id="zoom-level-text">100%</span>
+                            <button id="zoom-in-btn" class="zoom-btn" type="button" title="Increase size">+</button>
+                        </div>
+                    </div>
+                    <div class="settings-item" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px; color: var(--text-main);">Emotion Tracker</span>
+                        <label class="switch">
+                            <input id="webcam-switch" type="checkbox" aria-label="Toggle webcam emotion tracking">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <video id="webcam-feed" autoplay playsinline muted style="display: none;"></video>
+                    <canvas id="webcam-canvas" style="display: none;"></canvas>
+                </div>
+                <button class="icon-btn glass-icon" type="button" aria-label="More options">
+                    ⋮
+                </button>
+            </div>
+        </header>
+
+        <section id="chat" class="messages"></section>
+
+        <footer class="input-box">
+            <button class="input-icon-btn" type="button" aria-label="Add attachment">+</button>
+
+            <!-- ── Language Selector ── -->
+            <div class="lang-select-wrapper">
+                <select id="language-select" class="language-select" aria-label="Select language">
+                    <option value="English" selected>🌐 English</option>
+                    <option value="Hindi">हिन्दी</option>
+                    <option value="Bengali">বাংলা</option>
+                    <option value="Tamil">தமிழ்</option>
+                    <option value="Telugu">తెలుగు</option>
+                    <option value="Marathi">मराठी</option>
+                    <option value="Gujarati">ગુજરાતી</option>
+                    <option value="Kannada">ಕನ್ನಡ</option>
+                    <option value="Malayalam">മലയാളം</option>
+                    <option value="Punjabi">ਪੰਜਾਬੀ</option>
+                    <option value="Odia">ଓଡ଼ିଆ</option>
+                    <option value="Assamese">অসমীয়া</option>
+                </select>
+            </div>
+
+            <div class="input-wrapper">
+                <input id="input"
+                       placeholder="Type a message..."
+                       onkeydown="if(event.key==='Enter') send()">
+            </div>
+            <button id="mic-btn" class="input-icon-btn" type="button" aria-label="Voice Input">🎤</button>
+            <button id="send-btn" class="send-btn" type="button" onclick="send()" aria-label="Send message">
+                ➤
+            </button>
+        </footer>
+
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

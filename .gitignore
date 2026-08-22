@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.DS_Store
+
+# Project specific ignores
+Dataset/
+Model/
+Translator Model/
+Facial Emotion Detector/
+allfiles.txt
+assets/
