@@ -10,5 +10,6 @@ Dataset/
 Model/
 Translator Model/
 Facial Emotion Detector/
+BERT_Model/fine_tuned_bert/
 allfiles.txt
 assets/
