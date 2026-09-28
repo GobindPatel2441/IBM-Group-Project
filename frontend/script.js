@@ -243,21 +243,51 @@ function wireUi() {
         let baseText = "";   // text already in the input before mic was pressed
         let speechTimeout = null;  // [UPGRADE 6] safety timeout
 
+        let audioRecorder = null;
+        let audioChunks = [];
+        let latestAudioB64 = null;
+
         // Expose a function so the language dropdown can update recognition.lang
         window.updateRecognitionLang = (langName) => {
             recognition.lang = SPEECH_LANG_MAP[langName] || "en-US";
         };
 
-        micBtn.addEventListener("click", () => {
+        micBtn.addEventListener("click", async () => {
             if (isListening) {
                 isListening = false;
                 recognition.stop();
+                if (audioRecorder && audioRecorder.state !== "inactive") {
+                    audioRecorder.stop();
+                }
                 if (speechTimeout) { clearTimeout(speechTimeout); speechTimeout = null; }
             } else {
                 const currentLang = getSelectedLanguage();
                 recognition.lang = SPEECH_LANG_MAP[currentLang] || "en-US";
                 baseText = document.getElementById("input").value;
                 isListening = true;
+                latestAudioB64 = null;
+                audioChunks = [];
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioRecorder = new MediaRecorder(stream);
+                    audioRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) audioChunks.push(e.data);
+                    };
+                    audioRecorder.onstop = () => {
+                        const blob = new Blob(audioChunks, { type: "audio/webm" });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = () => {
+                            latestAudioB64 = reader.result;
+                        };
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    audioRecorder.start();
+                } catch (err) {
+                    console.error("Failed to start audio recording:", err);
+                }
+
                 try {
                     recognition.start();
                 } catch (err) {
@@ -314,6 +344,9 @@ function wireUi() {
             isListening = false;
             micBtn.classList.remove("mic-active");
             micBtn.title = "Voice Input";
+            if (audioRecorder && audioRecorder.state !== "inactive") {
+                audioRecorder.stop();
+            }
             if (speechTimeout) { clearTimeout(speechTimeout); speechTimeout = null; }
 
             let errorMsg = "Voice input failed. Please type your message.";
@@ -667,16 +700,23 @@ async function send() {
     showTypingIndicator();
 
     try {
-        // Backend call — now includes language and image
+        // Backend call — now includes language, image, and audio
         const base = await resolveApiBase();
         const history = active.messages.slice(-8).map((msg) => ({
             role: msg.role,
             text: msg.text
         }));
+        
+        const payload = { message: text, history, language, image: imageBase64 };
+        if (typeof latestAudioB64 !== 'undefined' && latestAudioB64) {
+            payload.audio = latestAudioB64;
+            latestAudioB64 = null; // clear it after sending
+        }
+
         const res = await fetch(`${base}/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text, history, language, image: imageBase64 })
+            body: JSON.stringify(payload)
         });
 
         if (!res.ok) {

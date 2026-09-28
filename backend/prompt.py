@@ -54,7 +54,7 @@ def wants_affirmation_only(text: str, history=None) -> bool:
 # -----------------------------
 
 def build_prompt(user_text, emotion_info, history=None, affirm_only=False,
-                 original_text=None, facial_emotion=None):
+                 original_text=None, facial_emotion=None, audio_emotion=None):
 
     user_text = user_text.strip()
     emotion_info = emotion_info or {}
@@ -109,6 +109,9 @@ Respond with appropriate empathy — but only to what they actually said.
 
     if facial_emotion:
         emotion_block += f"\nAdditionally, a facial expression scan detected the user looks: {facial_emotion.upper()}."
+
+    if audio_emotion:
+        emotion_block += f"\nAdditionally, voice analysis detected the user sounds: {audio_emotion.upper()}."
 
     history = history or []
 

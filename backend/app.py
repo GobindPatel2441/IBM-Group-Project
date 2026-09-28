@@ -76,6 +76,7 @@ def chat():
     history = request.json.get("history", [])
     language = request.json.get("language", "English")
     image_b64 = request.json.get("image", None)
+    audio_b64 = request.json.get("audio", None)
 
     # ── Facial Emotion Detection ────────────────────────────────────
     facial_emotion = None
@@ -85,7 +86,7 @@ def chat():
             nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-            results = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)
+            results = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False, detector_backend='mtcnn')
             if isinstance(results, list) and len(results) > 0:
                 facial_emotion = results[0]['dominant_emotion']
             elif isinstance(results, dict):
@@ -93,6 +94,16 @@ def chat():
             logger.info("[Debug] Facial emotion detected: %s", facial_emotion)
         except Exception as e:
             logger.error(f"Facial emotion detection failed: {e}")
+
+    # ── Audio Emotion Detection ─────────────────────────────────────
+    audio_emotion = None
+    if audio_b64:
+        try:
+            from .audio_emotion import detect_audio_emotion
+            audio_emotion = detect_audio_emotion(audio_b64)
+            logger.info("[Debug] Audio emotion detected: %s", audio_emotion)
+        except Exception as e:
+            logger.error(f"Audio emotion detection failed: {e}")
 
     # ── Validate language ──────────────────────────────────────────
     if language not in SUPPORTED_LANGUAGES:
@@ -172,6 +183,7 @@ def chat():
         affirm_only=affirm_only,
         original_text=original_text if needs_output_translation else None,
         facial_emotion=facial_emotion,
+        audio_emotion=audio_emotion,
     )
 
     app.logger.info("Generating response...")
@@ -227,15 +239,25 @@ def get_languages():
 
 @app.route("/status", methods=["GET"])
 def status():
-    """Lightweight health check for the Ollama backend."""
-    health_url = OLLAMA_URL.replace("/api/generate", "/api/tags")
-    try:
-        response = requests.get(health_url, timeout=3)
-        online = response.ok
-    except requests.exceptions.RequestException:
-        online = False
+    """Lightweight health check for the active LLM backend."""
+    from .config import LLM_PROVIDER, OPENAI_API_KEY
 
-    return jsonify({"status": "online" if online else "offline"})
+    if LLM_PROVIDER == "openai":
+        # For OpenAI, just verify the key is configured
+        online = bool(OPENAI_API_KEY and OPENAI_API_KEY != "sk-paste-your-api-key-here")
+    else:
+        # Ollama — ping its tags endpoint
+        health_url = OLLAMA_URL.replace("/api/generate", "/api/tags")
+        try:
+            response = requests.get(health_url, timeout=3)
+            online = response.ok
+        except requests.exceptions.RequestException:
+            online = False
+
+    return jsonify({
+        "status": "online" if online else "offline",
+        "provider": LLM_PROVIDER,
+    })
 
 
 if __name__ == "__main__":
