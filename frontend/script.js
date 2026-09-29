@@ -11,6 +11,7 @@ let currentZoom = 1;
 
 let webcamStream = null;
 const WEBCAM_KEY = "mika_webcam_v1";
+window.isBlindMode = false;
 
 const API_BASE_CANDIDATES = [
     "http://127.0.0.1:5000",
@@ -220,6 +221,23 @@ function wireUi() {
         });
     }
 
+    // ── Blind Mode toggle ──────────────────────────────────────────
+    const blindModeSwitch = document.getElementById("blind-mode-switch");
+    if (blindModeSwitch) {
+        window.isBlindMode = localStorage.getItem("mika_blind_v1") === "true";
+        blindModeSwitch.checked = window.isBlindMode;
+        blindModeSwitch.addEventListener("change", () => {
+            window.isBlindMode = blindModeSwitch.checked;
+            localStorage.setItem("mika_blind_v1", window.isBlindMode.toString());
+            if (window.isBlindMode && window.triggerMic) {
+                window.triggerMic(true);
+            } else {
+                window.speechSynthesis.cancel();
+                if (window.stopMic) window.stopMic();
+            }
+        });
+    }
+
     // ── Voice-to-text ──────────────────────────────────────────────
     const micBtn = document.getElementById("mic-btn");
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -252,14 +270,28 @@ function wireUi() {
             recognition.lang = SPEECH_LANG_MAP[langName] || "en-US";
         };
 
-        micBtn.addEventListener("click", async () => {
-            if (isListening) {
-                isListening = false;
-                recognition.stop();
-                if (audioRecorder && audioRecorder.state !== "inactive") {
-                    audioRecorder.stop();
+        window.stopMic = () => {
+            return new Promise((resolve) => {
+                window.audioResolve = resolve;
+                if (isListening) {
+                    isListening = false;
+                    recognition.stop();
+                    if (audioRecorder && audioRecorder.state !== "inactive") {
+                        audioRecorder.stop();
+                    } else {
+                        if (window.audioResolve) { window.audioResolve(); window.audioResolve = null; }
+                    }
+                    if (speechTimeout) { clearTimeout(speechTimeout); speechTimeout = null; }
+                } else {
+                    if (window.audioResolve) { window.audioResolve(); window.audioResolve = null; }
                 }
-                if (speechTimeout) { clearTimeout(speechTimeout); speechTimeout = null; }
+            });
+        };
+
+        window.triggerMic = async (forceStart = false) => {
+            if (isListening) {
+                if (forceStart) return;
+                window.stopMic();
             } else {
                 const currentLang = getSelectedLanguage();
                 recognition.lang = SPEECH_LANG_MAP[currentLang] || "en-US";
@@ -280,6 +312,10 @@ function wireUi() {
                         reader.readAsDataURL(blob);
                         reader.onloadend = () => {
                             latestAudioB64 = reader.result;
+                            if (window.audioResolve) {
+                                window.audioResolve();
+                                window.audioResolve = null;
+                            }
                         };
                         stream.getTracks().forEach(track => track.stop());
                     };
@@ -305,7 +341,9 @@ function wireUi() {
                     }
                 }, 60000);
             }
-        });
+        };
+
+        micBtn.addEventListener("click", () => window.triggerMic(false));
 
         recognition.onstart = () => {
             micBtn.classList.add("mic-active");
@@ -323,7 +361,20 @@ function wireUi() {
                     interim += t;
                 }
             }
-            document.getElementById("input").value = baseText + final + interim;
+            let currentText = baseText + final;
+            
+            if (window.isBlindMode && final) {
+                const lowerText = currentText.trim().toLowerCase();
+                if (/(?:\s+send[^\w\s]*|^\s*send[^\w\s]*)$/i.test(lowerText)) {
+                    currentText = currentText.replace(/(?:\s+send[^\w\s]*|^\s*send[^\w\s]*)$/i, "");
+                    document.getElementById("input").value = currentText;
+                    baseText = "";
+                    send(); // send() will await stopMic()
+                    return;
+                }
+            }
+
+            document.getElementById("input").value = currentText + interim;
             if (final) baseText += final;
         };
 
@@ -672,9 +723,20 @@ function setSendingState(sending) {
 async function send() {
     const input = document.getElementById("input");
     const chat = document.getElementById("chat");
-    const text = input.value.trim();
+    if (isSending) return;
 
-    if (!text || isSending) return;
+    if (window.isBlindMode) {
+        window.speechSynthesis.cancel();
+    }
+    
+    // Await microphone shutdown to ensure we have the complete latestAudioB64
+    if (window.stopMic) {
+        await window.stopMic();
+    }
+
+    const text = input.value.trim();
+    if (!text) return;
+
     if (!activeChatId) createNewChat();
 
     const active = chats.find((item) => item.id === activeChatId);
@@ -771,6 +833,18 @@ async function send() {
         active.updatedAt = Date.now();
         saveChats();
         renderChatList();
+
+        if (window.isBlindMode && botMessage.text) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(botMessage.text);
+            utterance.lang = SPEECH_LANG_MAP[getSelectedLanguage()] || "en-US";
+            utterance.onend = () => {
+                if (window.isBlindMode && window.triggerMic) {
+                    window.triggerMic(true);
+                }
+            };
+            window.speechSynthesis.speak(utterance);
+        }
     } catch (err) {
         console.error("Failed to reach Mika backend", err);
         active.messages.push({

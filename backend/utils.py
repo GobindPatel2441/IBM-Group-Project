@@ -72,12 +72,13 @@ def polarity_gate(scores, polarity):
     adjusted = scores.copy()
 
     if polarity == "positive":
-        adjusted["sadness"] *= 0.3
-        adjusted["anger"] *= 0.4
-        adjusted["fear"] *= 0.4
+        if "sadness" in adjusted: adjusted["sadness"] *= 0.3
+        if "anger" in adjusted: adjusted["anger"] *= 0.4
+        if "fear" in adjusted: adjusted["fear"] *= 0.4
 
     elif polarity == "negative":
-        adjusted["joy"] *= 0.3
+        if "joy" in adjusted: adjusted["joy"] *= 0.3
+        if "love" in adjusted: adjusted["love"] *= 0.3
 
     return adjusted
 

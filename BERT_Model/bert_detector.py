@@ -99,7 +99,7 @@ def detect_emotion_bert(text: str, original_text: str = None):
     # Fallback to heuristic if BERT model failed to load
     if not success or _bert_model is None or _bert_tokenizer is None:
         polarity = get_polarity(text)
-        scores = {emo: 0.1 for emo in EMOTIONS}
+        scores = {emo: 0.1 for emo in ALL_EMOTIONS}
         if polarity == "positive":
             scores["joy"] = 0.9
         elif polarity == "negative":
@@ -151,14 +151,10 @@ def detect_emotion_bert(text: str, original_text: str = None):
         label_name = _id2label.get(idx, str(idx)).lower()
         raw_scores[label_name] = float(prob)
 
-    # Extract primary 4 emotions (anger, fear, joy, sadness) + mapped emotions
+    # Extract all 6 emotions
     target_scores = {}
-    for emo in EMOTIONS:
+    for emo in ALL_EMOTIONS:
         target_scores[emo] = raw_scores.get(emo, 0.0)
-
-    # Map "love" into joy boost if present
-    if "love" in raw_scores:
-        target_scores["joy"] = max(target_scores["joy"], raw_scores["love"])
 
     # Polarity gating for safety and logical consistency
     polarity = get_polarity(text_proc)
