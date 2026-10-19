@@ -2,14 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sentix | Emotion-Aware AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentix | Emotion-Aware AI Companion</title>
+    
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Liquid Glass JS & Component Styles -->
+    <link rel="stylesheet" href="liquid-glass/glass.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<!-- Ambient Chromatic Glowing Orbs for Liquid Glass Refraction -->
+<div class="ambient-glow-background" aria-hidden="true">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+    <div class="ambient-orb orb-4"></div>
+</div>
+
 <div class="container">
 
-    <!-- LEFT PANEL -->
+    <!-- LEFT PANEL / SIDEBAR -->
     <aside class="sidebar">
         <button id="toggle-sidebar" class="icon-btn sidebar-toggle-btn ghost" type="button" aria-label="Toggle sidebar">&lt;</button>
 
@@ -18,6 +35,7 @@
                 <div class="brand-row">
                     <div class="brand-dot"></div>
                     <span class="brand-text">Sentix</span>
+                    <span class="brand-badge">AI</span>
                 </div>
             </div>
 
@@ -45,17 +63,23 @@
         <header class="chat-header">
             <div class="chat-header-left">
                 <div class="profile">
-                    <img src="https://i.pinimg.com/564x/8d/ff/49/8dff49985d0d8afa53751d9ba8907aed.jpg" alt="Mika avatar" />
-                    <div>
+                    <div class="avatar-wrapper">
+                        <img src="https://i.pinimg.com/564x/8d/ff/49/8dff49985d0d8afa53751d9ba8907aed.jpg" alt="Sentix avatar" />
+                        <span class="avatar-pulse"></span>
+                    </div>
+                    <div class="profile-meta">
                         <h3 id="chat-title">Sentix AI</h3>
                         <span class="status">Active now</span>
                     </div>
                 </div>
             </div>
+            
             <div class="chat-header-actions" style="position: relative;">
                 <button id="settings-btn" class="icon-btn glass-icon" type="button" aria-label="Settings">
                     ⚙
                 </button>
+
+                <!-- Settings Dropdown Menu -->
                 <div id="settings-menu" class="settings-menu hidden">
                     <div class="settings-item">
                         <span>UI Scale</span>
@@ -65,66 +89,86 @@
                             <button id="zoom-in-btn" class="zoom-btn" type="button" title="Increase size">+</button>
                         </div>
                     </div>
-                    <div class="settings-item" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; color: var(--text-main);">Emotion Tracker</span>
+                    
+                    <div class="settings-item">
+                        <span>Emotion Tracker</span>
                         <label class="switch">
                             <input id="webcam-switch" type="checkbox" aria-label="Toggle webcam emotion tracking">
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="settings-item" style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 13px; color: var(--text-main);">Blind Mode</span>
+                    
+                    <div class="settings-item">
+                        <span>Blind Mode</span>
                         <label class="switch">
                             <input id="blind-mode-switch" type="checkbox" aria-label="Toggle blind mode">
                             <span class="slider"></span>
                         </label>
                     </div>
+
+                    <!-- Hidden Webcam elements (preserved for DeepFace emotion tracking) -->
                     <video id="webcam-feed" autoplay playsinline muted style="display: none;"></video>
                     <canvas id="webcam-canvas" style="display: none;"></canvas>
                 </div>
+
                 <button class="icon-btn glass-icon" type="button" aria-label="More options">
                     ⋮
                 </button>
             </div>
         </header>
 
+        <!-- MESSAGES LIST -->
         <section id="chat" class="messages"></section>
 
+        <!-- BOTTOM INPUT DOCK -->
         <footer class="input-box">
-            <button class="input-icon-btn" type="button" aria-label="Add attachment">+</button>
+            <button class="input-icon-btn" type="button" aria-label="Add attachment" title="Add Attachment">+</button>
 
             <!-- ── Language Selector ── -->
             <div class="lang-select-wrapper">
                 <select id="language-select" class="language-select" aria-label="Select language">
                     <option value="English" selected>🌐 English</option>
-                    <option value="Hindi">हिन्दी</option>
-                    <option value="Bengali">বাংলা</option>
-                    <option value="Tamil">தமிழ்</option>
-                    <option value="Telugu">తెలుగు</option>
-                    <option value="Marathi">मराठी</option>
-                    <option value="Gujarati">ગુજરાતી</option>
-                    <option value="Kannada">ಕನ್ನಡ</option>
-                    <option value="Malayalam">മലയാളം</option>
-                    <option value="Punjabi">ਪੰਜਾਬੀ</option>
-                    <option value="Odia">ଓଡ଼ିଆ</option>
-                    <option value="Assamese">অসমীয়া</option>
+                    <option value="Hindi">हिन्दी (Hindi)</option>
+                    <option value="Bengali">বাংলা (Bengali)</option>
+                    <option value="Tamil">தமிழ் (Tamil)</option>
+                    <option value="Telugu">తెలుగు (Telugu)</option>
+                    <option value="Marathi">मराठी (Marathi)</option>
+                    <option value="Gujarati">ગુજરાતી (Gujarati)</option>
+                    <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
+                    <option value="Malayalam">മലയാളം (Malayalam)</option>
+                    <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
+                    <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
+                    <option value="Assamese">অসমীয়া (Assamese)</option>
                 </select>
             </div>
 
             <div class="input-wrapper">
                 <input id="input"
-                       placeholder="Type a message..."
+                       placeholder="Type your message to Sentix..."
+                       autocomplete="off"
                        onkeydown="if(event.key==='Enter') send()">
             </div>
-            <button id="mic-btn" class="input-icon-btn" type="button" aria-label="Voice Input">🎤</button>
-            <button id="send-btn" class="send-btn" type="button" onclick="send()" aria-label="Send message">
-                ➤
+            
+            <button id="mic-btn" class="input-icon-btn mic-btn" type="button" aria-label="Voice Input" title="Voice Input">🎤</button>
+            <button id="send-btn" class="send-btn" type="button" onclick="send()" aria-label="Send message" title="Send message">
+                <span class="send-icon">➤</span>
+                <span class="send-spinner"></span>
             </button>
         </footer>
 
     </main>
 </div>
 
+<!-- Dependencies & Liquid Glass Engine -->
+<script src="html2canvas.min.js"></script>
+<script src="liquid-glass/container.js"></script>
+<script src="liquid-glass/button.js"></script>
+<script src="liquid-glass/controls.js"></script>
+
+<!-- Application Logic & Functions -->
 <script src="script.js"></script>
+
+<!-- Liquid Glass Initialization & Dynamic Effects -->
+<script src="liquid-glass-init.js"></script>
 </body>
 </html>
