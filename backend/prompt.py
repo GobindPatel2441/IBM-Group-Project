@@ -54,7 +54,8 @@ def wants_affirmation_only(text: str, history=None) -> bool:
 # -----------------------------
 
 def build_prompt(user_text, emotion_info, history=None, affirm_only=False,
-                 original_text=None, facial_emotion=None, audio_emotion=None):
+                 original_text=None, facial_emotion=None, audio_emotion=None,
+                 source=None):
 
     user_text = user_text.strip()
     emotion_info = emotion_info or {}
@@ -141,6 +142,11 @@ Conversation mode: affirmation_only = True
 - Do NOT interrogate the user
 """
 
+    # ASL modality note
+    asl_note = ""
+    if source == "asl":
+        asl_note = "\nNote: The user communicated this message using American Sign Language (ASL). Respond warmly and naturally.\n"
+
     # Translation context (toned down — no amplification instruction)
     translation_note = ""
     if original_text and original_text != user_text:
@@ -166,6 +172,7 @@ CRITICAL RULES:
 - Never argue, lecture, or over-explain
 
 {question_rule}
+{asl_note}
 {translation_note}
 Conversation history:
 {history_block}
@@ -177,4 +184,4 @@ Respond like a caring friend — but stay grounded in what was actually said.
 """
 
     return prompt
-
+

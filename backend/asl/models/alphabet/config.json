@@ -1,0 +1,51 @@
+{
+  "model_type": "FingerspellingMLP",
+  "input_dim": 126,
+  "hidden_dims": [
+    512,
+    256,
+    128
+  ],
+  "dropouts": [
+    0.3,
+    0.3,
+    0.2
+  ],
+  "num_classes": 29,
+  "total_parameters": 234781,
+  "trainable_parameters": 234781,
+  "best_val_acc": 0.994572591587517,
+  "best_epoch": 33,
+  "label_map": {
+    "a": 0,
+    "b": 1,
+    "c": 2,
+    "d": 3,
+    "del": 4,
+    "e": 5,
+    "f": 6,
+    "g": 7,
+    "h": 8,
+    "i": 9,
+    "j": 10,
+    "k": 11,
+    "l": 12,
+    "m": 13,
+    "n": 14,
+    "nothing": 15,
+    "o": 16,
+    "p": 17,
+    "q": 18,
+    "r": 19,
+    "s": 20,
+    "space": 21,
+    "t": 22,
+    "u": 23,
+    "v": 24,
+    "w": 25,
+    "x": 26,
+    "y": 27,
+    "z": 28
+  },
+  "training_samples": 4915
+}

@@ -37,6 +37,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+from .asl import asl_bp
+app.register_blueprint(asl_bp)
+
 
 # ---------------------------------------------------------------------------
 # Sentence splitter for streaming translation
@@ -77,6 +80,7 @@ def chat():
     language = request.json.get("language", "English")
     image_b64 = request.json.get("image", None)
     audio_b64 = request.json.get("audio", None)
+    source = request.json.get("source", None)
 
     # ── Facial Emotion Detection ────────────────────────────────────
     facial_emotion = None
@@ -184,6 +188,7 @@ def chat():
         original_text=original_text if needs_output_translation else None,
         facial_emotion=facial_emotion,
         audio_emotion=audio_emotion,
+        source=source,
     )
 
     app.logger.info("Generating response...")

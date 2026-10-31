@@ -4,8 +4,10 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+*.onnx
 
 # Project specific ignores
+asl_complete_system/
 Dataset/
 Model/
 Translator Model/

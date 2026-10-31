@@ -70,6 +70,26 @@ function showSpeechError(msg) {
     }, 4000);
 }
 
+let aslActive = false;
+window.isAslActive = () => aslActive;
+window.setAslActive = (val) => {
+    aslActive = !!val;
+    if (!aslActive) {
+        releaseWebcamIfUnused();
+    }
+};
+
+function isEmotionTrackerActive() {
+    const webcamSwitch = document.getElementById("webcam-switch");
+    return webcamSwitch ? webcamSwitch.checked : false;
+}
+
+function releaseWebcamIfUnused() {
+    if (!isEmotionTrackerActive() && !aslActive) {
+        stopWebcam(true);
+    }
+}
+
 function wireWebcam() {
     const webcamSwitch = document.getElementById("webcam-switch");
     if (!webcamSwitch) return;
@@ -77,16 +97,16 @@ function wireWebcam() {
     const savedWebcam = localStorage.getItem(WEBCAM_KEY) === "true";
     webcamSwitch.checked = savedWebcam;
     if (savedWebcam) {
-        startWebcam();
+        startWebcam().catch(() => {});
     }
 
     webcamSwitch.addEventListener("change", () => {
         const isEnabled = webcamSwitch.checked;
         localStorage.setItem(WEBCAM_KEY, isEnabled.toString());
         if (isEnabled) {
-            startWebcam();
+            startWebcam().catch(() => {});
         } else {
-            stopWebcam();
+            releaseWebcamIfUnused();
         }
     });
 
@@ -111,25 +131,44 @@ function wireWebcam() {
 }
 
 async function startWebcam() {
+    if (webcamStream && webcamStream.active) {
+        const video = document.getElementById("webcam-feed");
+        if (video && video.srcObject !== webcamStream) video.srcObject = webcamStream;
+        const aslVideo = document.getElementById("asl-webcam-preview");
+        if (aslVideo && aslVideo.srcObject !== webcamStream) aslVideo.srcObject = webcamStream;
+        return webcamStream;
+    }
     try {
         const video = document.getElementById("webcam-feed");
-        webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        video.srcObject = webcamStream;
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false
+        });
+        if (video) video.srcObject = webcamStream;
+        const aslVideo = document.getElementById("asl-webcam-preview");
+        if (aslVideo) aslVideo.srcObject = webcamStream;
+        return webcamStream;
     } catch (err) {
         console.error("Camera access denied or unavailable", err);
         const webcamSwitch = document.getElementById("webcam-switch");
         if (webcamSwitch) webcamSwitch.checked = false;
         localStorage.setItem(WEBCAM_KEY, "false");
+        throw err;
     }
 }
 
-function stopWebcam() {
+function stopWebcam(force = false) {
+    if (!force && (aslActive || isEmotionTrackerActive())) {
+        return; // Camera stream is still required by active ASL or Emotion Tracker
+    }
     if (webcamStream) {
         webcamStream.getTracks().forEach(track => track.stop());
         webcamStream = null;
     }
     const video = document.getElementById("webcam-feed");
     if (video) video.srcObject = null;
+    const aslVideo = document.getElementById("asl-webcam-preview");
+    if (aslVideo) aslVideo.srcObject = null;
 }
 
 function captureWebcamImage() {
@@ -720,7 +759,7 @@ function setSendingState(sending) {
     isSending = sending;
 }
 
-async function send() {
+async function send(source = null) {
     const input = document.getElementById("input");
     const chat = document.getElementById("chat");
     if (isSending) return;
@@ -770,6 +809,9 @@ async function send() {
         }));
         
         const payload = { message: text, history, language, image: imageBase64 };
+        if (source) {
+            payload.source = source;
+        }
         if (typeof latestAudioB64 !== 'undefined' && latestAudioB64) {
             payload.audio = latestAudioB64;
             latestAudioB64 = null; // clear it after sending
@@ -861,3 +903,10 @@ async function send() {
         setSendingState(false);
     }
 }
+
+// Window exports for modular interoperability
+window.startWebcam = startWebcam;
+window.stopWebcam = stopWebcam;
+window.captureWebcamImage = captureWebcamImage;
+window.send = send;
+window.resolveApiBase = resolveApiBase;

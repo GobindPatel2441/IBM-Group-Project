@@ -149,6 +149,7 @@
                        onkeydown="if(event.key==='Enter') send()">
             </div>
             
+            <button id="asl-toggle-btn" class="input-icon-btn asl-btn" type="button" aria-label="ASL Sign Recognition" title="ASL Recognition (American Sign Language)">🤟</button>
             <button id="mic-btn" class="input-icon-btn mic-btn" type="button" aria-label="Voice Input" title="Voice Input">🎤</button>
             <button id="send-btn" class="send-btn" type="button" onclick="send()" aria-label="Send message" title="Send message">
                 <span class="send-icon">➤</span>
@@ -159,6 +160,101 @@
     </main>
 </div>
 
+
+<!-- ASL Recognition Modal & Backdrop -->
+<div id="asl-modal-backdrop" class="asl-backdrop hidden" aria-hidden="true"></div>
+<div id="asl-modal" class="asl-modal hidden" role="dialog" aria-labelledby="asl-modal-title">
+    <div class="asl-modal-header">
+        <div class="asl-title-row">
+            <span class="asl-header-icon">🤟</span>
+            <div class="asl-header-text">
+                <h3 id="asl-modal-title">ASL Sign Recognition</h3>
+                <span class="asl-header-sub">Multimodal Sign-to-Text Companion</span>
+            </div>
+        </div>
+        <div class="asl-header-actions">
+            <div id="asl-status-badge" class="asl-badge badge-ready">Initializing...</div>
+            <button id="asl-close-modal-btn" class="icon-btn asl-close-btn" type="button" aria-label="Close ASL panel">✕</button>
+        </div>
+    </div>
+
+    <!-- Recognition Mode Selector & Camera Controls -->
+    <div class="asl-mode-row">
+        <div class="asl-mode-switch">
+            <button id="asl-mode-alpha" class="asl-mode-btn active" type="button">🔤 Alphabet (A–Z)</button>
+            <button id="asl-mode-word" class="asl-mode-btn" type="button">🗣️ Word Signs (200 Vocab)</button>
+        </div>
+        <div class="asl-stream-controls">
+            <button id="asl-start-btn" class="asl-control-btn btn-start" type="button">▶ Start</button>
+            <button id="asl-stop-btn" class="asl-control-btn btn-stop" type="button" disabled>⏹ Stop</button>
+        </div>
+    </div>
+
+    <!-- Main Recognition Workspace Grid -->
+    <div class="asl-workspace-grid">
+        <!-- Video Preview Panel -->
+        <div class="asl-camera-card">
+            <div class="asl-video-container">
+                <video id="asl-webcam-preview" autoplay playsinline muted></video>
+                <div class="asl-video-overlay">
+                    <span id="asl-hand-badge" class="asl-badge badge-no-hand">✋ No Hand Detected</span>
+                </div>
+            </div>
+            <!-- Progress / Hold Stabilization Bar -->
+            <div id="asl-hold-container" class="asl-hold-wrapper">
+                <div class="asl-hold-label-row">
+                    <span>Hold Stabilization</span>
+                    <span class="asl-hold-hint">Hold sign for 8 frames</span>
+                </div>
+                <div class="asl-progress-track">
+                    <div id="asl-hold-bar" class="asl-hold-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Recognition Output Panel -->
+        <div class="asl-inference-card">
+            <div class="asl-pred-section">
+                <div class="asl-pred-header">
+                    <span class="asl-card-title">Live Prediction</span>
+                    <span id="asl-confidence-val" class="asl-conf-value">0%</span>
+                </div>
+                <div class="asl-progress-track conf-track">
+                    <div id="asl-confidence-bar" class="asl-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="asl-display-pill">
+                    <span id="asl-live-prediction" class="asl-char-display">—</span>
+                </div>
+            </div>
+
+            <!-- Top-5 Probability List for Word Recognition -->
+            <div id="asl-top5-list" class="asl-top5-panel" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Progressive Sentence Construction Area -->
+    <div class="asl-sentence-card">
+        <div class="asl-sentence-header">
+            <span class="asl-card-title">Recognized Sentence</span>
+            <div class="asl-sentence-actions">
+                <button id="asl-space-btn" class="asl-action-btn" type="button" title="Insert Space">␣ Space</button>
+                <button id="asl-undo-btn" class="asl-action-btn" type="button" title="Undo Last Token">⌫ Undo</button>
+                <button id="asl-clear-btn" class="asl-action-btn btn-danger" type="button" title="Clear All">🗑 Clear</button>
+            </div>
+        </div>
+        <div id="asl-sentence-box" class="asl-sentence-display">Recognized sentence will appear here...</div>
+    </div>
+
+    <!-- Modal Footer / Primary Action -->
+    <div class="asl-modal-footer">
+        <span class="asl-footer-hint">Recognized sign language text will be sent to the Sentix chatbot.</span>
+        <button id="asl-send-to-sentix-btn" class="asl-send-btn" type="button">
+            <span>Send to Sentix</span>
+            <span class="asl-send-arrow">➤</span>
+        </button>
+    </div>
+</div>
+
 <!-- Dependencies & Liquid Glass Engine -->
 <script src="html2canvas.min.js"></script>
 <script src="liquid-glass/container.js"></script>
@@ -167,6 +263,7 @@
 
 <!-- Application Logic & Functions -->
 <script src="script.js"></script>
+<script src="asl.js"></script>
 
 <!-- Liquid Glass Initialization & Dynamic Effects -->
 <script src="liquid-glass-init.js"></script>
