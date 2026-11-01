@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 import json
 import re
 import time
@@ -34,8 +34,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
+
+@app.route('/')
+def index():
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 
 from .asl import asl_bp
 app.register_blueprint(asl_bp)

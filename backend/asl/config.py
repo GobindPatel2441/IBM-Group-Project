@@ -45,22 +45,23 @@ FS_CONFIDENCE_THRESHOLD = 0.70
 FS_HOLD_FRAMES = 8
 LETTER_PAUSE_SECONDS = 0.8
 
-# ── Word (Pose Transformer) Architecture & Settings ─────────────────────
+# ── Word (Spatio-Temporal Model) Architecture & Settings ────────────────
 TRANSFORMER_INPUT_DIM = 225  # right hand (63) + left hand (63) + pose (99)
-TRANSFORMER_SEQ_LEN = 64
-TRANSFORMER_D_MODEL = 512
-TRANSFORMER_N_HEADS = 8
-TRANSFORMER_N_LAYERS = 6
-TRANSFORMER_D_FF = 2048
-TRANSFORMER_DROPOUT = 0.1
-TRANSFORMER_NUM_CLASSES = 200  # Exact trained vocabulary count
+TRANSFORMER_SEQ_LEN = 32     # 32 frames (optimal 1-second sign recognition)
+TRANSFORMER_D_MODEL = 256
+TRANSFORMER_HIDDEN_DIM = 128
+TRANSFORMER_N_HEADS = 4
+TRANSFORMER_N_LAYERS = 2
+TRANSFORMER_D_FF = 1024
+TRANSFORMER_DROPOUT = 0.2
+TRANSFORMER_NUM_CLASSES = 54  # WLASL Core Conversational Vocabulary
 
-WORD_CONFIDENCE_HIGH = 0.20
-WORD_CONFIDENCE_MED = 0.10
+WORD_CONFIDENCE_HIGH = 0.28  # Strict threshold for valid recognized sign
+WORD_CONFIDENCE_MED = 0.16   # Minimum margin threshold
+WORD_CONFIDENCE_MARGIN = 0.05 # Margin between top-1 and top-2
 MOTION_THRESHOLD = 0.005
 WORD_PAUSE_SECONDS = 2.0
 
 # ── Session Management Settings ─────────────────────────────────────────
 SESSION_TTL_SECONDS = 600  # 10 minutes inactivity timeout
 MAX_SENTENCE_WORDS = 30
-

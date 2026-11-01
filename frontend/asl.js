@@ -325,14 +325,17 @@
     function renderInferenceResult(data) {
         if (!data || !data.success) return;
 
-        // Hand presence status
+        // Hand presence and sign validity status
         if (handBadgeEl) {
-            if (data.has_hand) {
-                handBadgeEl.className = "asl-badge badge-hand-detected";
-                handBadgeEl.textContent = "✋ Hand Detected";
-            } else {
+            if (!data.has_hand) {
                 handBadgeEl.className = "asl-badge badge-no-hand";
                 handBadgeEl.textContent = "✋ No Hand Detected";
+            } else if (data.sign_status === "uncertain" || data.prediction === "Uncertain Sign") {
+                handBadgeEl.className = "asl-badge badge-uncertain";
+                handBadgeEl.textContent = "⚠️ Uncertain Sign";
+            } else {
+                handBadgeEl.className = "asl-badge badge-hand-detected";
+                handBadgeEl.textContent = "✋ Hand Detected";
             }
         }
 

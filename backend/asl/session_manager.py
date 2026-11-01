@@ -9,7 +9,7 @@ from collections import deque
 import threading
 import time
 import uuid
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 import numpy as np
 
 from .config import (
@@ -43,6 +43,10 @@ class ASLSession:
         self.last_motion_time: float = time.time()
         self.is_signing: bool = False
 
+        # Prediction stabilization and temporal anti-flicker window
+        self.rolling_predictions: deque = deque(maxlen=5)
+        self.rolling_confidences: deque = deque(maxlen=5)
+
         # Prediction and history log
         self.prediction_history: List[Dict[str, Any]] = []
 
@@ -58,7 +62,39 @@ class ASLSession:
             self.sentence_builder.clear()
             self.prev_landmarks = None
             self.is_signing = False
+            self.rolling_predictions.clear()
+            self.rolling_confidences.clear()
             self.touch()
+
+    def add_prediction(self, word: str, conf: float) -> Tuple[str, float, bool]:
+        """
+        Record prediction into rolling window and return majority consensus.
+        Returns: (smoothed_word, smoothed_conf, is_consensus)
+        """
+        self.rolling_predictions.append(word)
+        self.rolling_confidences.append(conf)
+
+        if not self.rolling_predictions:
+            return "", 0.0, False
+
+        counts: Dict[str, int] = {}
+        for w in self.rolling_predictions:
+            if w and w != "Uncertain Sign":
+                counts[w] = counts.get(w, 0) + 1
+
+        if not counts:
+            return "", 0.0, False
+
+        majority_word = max(counts, key=counts.get)
+        count = counts[majority_word]
+        
+        # Consensus: appears in at least 3 out of 5 frames (or >= 60% of window)
+        is_consensus = count >= min(3, len(self.rolling_predictions))
+        
+        confs = [c for w, c in zip(self.rolling_predictions, self.rolling_confidences) if w == majority_word]
+        avg_conf = float(np.mean(confs)) if confs else 0.0
+
+        return majority_word, avg_conf, is_consensus
 
     def update_motion(self, full_lm: np.ndarray, now: Optional[float] = None) -> bool:
         """
@@ -138,6 +174,15 @@ class SessionManager:
         with self._lock:
             self._cleanup_expired_locked()
             return len(self._sessions)
+
+    def get_active_session_count(self) -> int:
+        """Alias for active_sessions_count."""
+        return self.active_sessions_count()
+
+    @property
+    def sessions(self) -> Dict[str, ASLSession]:
+        """Direct access to sessions dict."""
+        return self._sessions
 
     def _cleanup_expired_locked(self):
         """Purge sessions inactive longer than TTL."""
