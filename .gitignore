@@ -6,10 +6,13 @@ venv/
 .DS_Store
 *.onnx
 
-# Project specific ignores
+# Model weights and heavy artifacts (root & subdirectories)
 Model/
 Translator Model/
-BERT_Model/fine_tuned_bert/
+**/Model/
+**/Translator Model/
+**/BERT_Model/fine_tuned_bert/
 
 # Reference folder (offline datasets, videos, legacy repos, scratch & reports)
 Reference/
+

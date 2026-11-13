@@ -99,44 +99,65 @@ SENTIX is organized into an **8-Layer Modular Architecture**:
 
 ## 📁 Repository Directory Structure
 
+The repository is partitioned into two clear directories:
+- **`project/`**: Contains **only** the self-contained production code, runtime models, dependencies, tests, and configuration required to run the SENTIX application.
+- **`Reference/`**: Contains all offline training datasets, raw video corpora, model evaluation metrics, legacy prototypes, and academic documentation.
+
 ```text
-├── backend/
-│   ├── app.py                     # Main Flask server & multimodal API gateway
-│   ├── config.py                  # Centralized configuration & .env loader
-│   ├── audio_emotion.py           # SenseVoiceSmall audio emotion analysis
-│   ├── emotion_detector.py        # Emotion classification router (BERT / SVR)
-│   ├── local_model.py             # LLM router & Ollama Llama 3 streaming gateway
-│   ├── openai_model.py            # OpenAI GPT-3.5-Turbo gateway
-│   ├── prompt.py                  # Empathetic prompt engineering & affect fusion
-│   ├── safety.py                  # Deterministic self-harm crisis filter & 988 bypass
-│   ├── translator.py              # Meta NLLB-200 bidirectional translation wrapper
-│   ├── utils.py                   # Negation handling & polarity gating helpers
-│   └── asl/                       # ASL Recognition Subsystem
-│       ├── alphabet_model.py      # Model A: 4-Layer MLP for static fingerspelling
-│       ├── word_model.py          # Model B: SpatioTemporalAttentionModel for dynamic signs
-│       ├── landmark_extractor.py  # MediaPipe Hands & Pose skeletal feature extractor
-│       ├── session_manager.py     # 5-frame rolling consensus & buffer management
-│       ├── sentence_builder.py    # ASL word concatenation & sentence state
-│       ├── asl_service.py         # Real-time inference coordinator & stabilization
-│       ├── routes.py              # Flask Blueprint for /asl/* endpoints
-│       └── models/                # Serialized model checkpoints
-│           ├── alphabet/          # Model A weights (best_model.pth, scaler.pkl)
-│           ├── word/              # Model B weights (best_model.pth, norm_mean/std)
-│           └── mediapipe/         # MediaPipe landmarker task binaries (.task)
-├── frontend/
-│   ├── index.html                 # Main conversational UI
-│   ├── script.js                  # Chat orchestration, audio/webcam capture
-│   ├── style.css                  # Liquid-glass styles & status badges
-│   ├── asl.html                   # Interactive ASL Studio workspace
-│   ├── asl.js                     # ASL HUD, skeleton canvas & chat handoff
-│   └── liquid-glass/              # Custom liquid glass UI component library
-├── BERT_Model/
-│   ├── bert_detector.py           # PyTorch fine-tuned BERT emotion classifier
-│   └── fine_tuned_bert/           # Trained BERT transformer weights & tokenizer
-├── Model/                         # SVR & TF-IDF regression fallback models
-├── tests/                         # Full automated test suite (19 unit tests)
-├── requirements.txt               # Complete Python runtime dependencies
-└── .env                           # Centralized environment configuration
+c:\Major project\
+├── project/                       # SELF-CONTAINED RUNNABLE APPLICATION
+│   ├── backend/
+│   │   ├── app.py                 # Main Flask server & multimodal API gateway
+│   │   ├── config.py              # Centralized configuration & environment loader
+│   │   ├── audio_emotion.py       # SenseVoiceSmall audio emotion analysis
+│   │   ├── emotion_detector.py    # Emotion classification router (BERT / SVR)
+│   │   ├── local_model.py         # LLM router & Ollama Llama 3 streaming gateway
+│   │   ├── openai_model.py        # OpenAI GPT-3.5-Turbo gateway
+│   │   ├── prompt.py              # Empathetic prompt engineering & affect fusion
+│   │   ├── safety.py              # Deterministic self-harm crisis filter & 988 bypass
+│   │   ├── translator.py          # Multilingual Indic translation wrapper
+│   │   ├── utils.py               # Negation handling & polarity gating helpers
+│   │   └── asl/                   # ASL Recognition Subsystem
+│   │       ├── alphabet_model.py  # Model A: 4-Layer MLP for static fingerspelling
+│   │       ├── word_model.py      # Model B: SpatioTemporalAttentionModel for dynamic signs
+│   │       ├── landmark_extractor.py # MediaPipe Hands & Pose skeletal feature extractor
+│   │       ├── session_manager.py # 5-frame rolling consensus & buffer management
+│   │       ├── sentence_builder.py# ASL word concatenation & sentence state
+│   │       ├── asl_service.py     # Real-time inference coordinator & stabilization
+│   │       ├── routes.py          # Flask Blueprint for /asl/* endpoints
+│   │       └── models/            # Serialized model checkpoints
+│   │           ├── alphabet/      # Model A weights (best_model.pth, scaler.pkl)
+│   │           ├── word/          # Model B weights (best_model.pth, norm_mean/std)
+│   │           └── mediapipe/     # MediaPipe landmarker task binaries (.task)
+│   ├── frontend/
+│   │   ├── index.html             # Main conversational UI & ASL Studio modal
+│   │   ├── script.js              # Chat orchestration, audio/webcam capture
+│   │   ├── style.css              # Liquid-glass styles & status badges
+│   │   ├── asl.js                 # ASL HUD, skeleton canvas & chat handoff
+│   │   └── liquid-glass/          # Custom liquid glass UI component library
+│   ├── BERT_Model/
+│   │   ├── bert_detector.py       # PyTorch fine-tuned BERT emotion classifier
+│   │   └── fine_tuned_bert/       # Trained BERT transformer weights & tokenizer
+│   ├── Model/                     # Classical ML emotion models & vectorizers
+│   ├── Translator Model/          # IndicTrans2 multilingual translation model
+│   ├── tests/                     # Full automated test suite (19 unit tests)
+│   ├── requirements.txt           # Python runtime dependencies
+│   ├── run.py                     # Convenience launcher
+│   └── README.md                  # Application guide
+├── Reference/                     # OFFLINE REFERENCE, DATASETS & DOCUMENTATION
+│   ├── ASL_USE/                   # Raw ASL training videos & extracted landmarks (~5.25 GB)
+│   ├── asl_complete_system/       # Standalone legacy ASL repository & experiments
+│   ├── asl_word_model_artifacts/  # Training checkpoints, loss curves, confusion matrices
+│   ├── Dataset/                   # Offline emotion training datasets (text/tabular CSVs)
+│   ├── eval_dataset/              # Evaluation audio and facial image samples
+│   ├── Facial Emotion Detector/   # Upstream cloned DeepFace development source
+│   ├── SENTIX_REPORT_EVIDENCE_PACK/ # Academic report benchmarks and audit logs
+│   ├── SENTIX_System_Design.drawio# Full system architecture diagram
+│   └── *.md                       # Reference guides, API docs, and troubleshooting notes
+├── run.py                         # Root launcher script (delegates to project/run.py)
+├── requirements.txt               # Root Python package dependencies
+├── .gitattributes                 # Git LFS & line ending rules
+└── .gitignore                     # Git ignore rules (ignores Reference/ and large models)
 ```
 
 ---
@@ -147,6 +168,51 @@ SENTIX is organized into an **8-Layer Modular Architecture**:
 - **Python 3.10 or 3.11** (64-bit recommended)
 - **Webcam & Microphone** (for facial, speech, and ASL features)
 - **Ollama** (optional, for local Llama 3 execution): [https://ollama.com/](https://ollama.com/)
+
+### 2. Environment Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/GobindPatel2441/IBM-Group-Project.git
+cd IBM-Group-Project
+
+# Create and activate virtual environment
+python -m venv .venv
+
+# Windows
+.\.venv\Scripts\activate
+
+# Linux / macOS
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 3. Launching the Application
+
+You can launch SENTIX either from the root or from inside the `project/` directory:
+
+```bash
+# Option A: From root directory
+python run.py
+
+# Option B: From project directory
+cd project
+python run.py
+# or
+python -m backend.app
+```
+
+Navigate to **`http://localhost:5000`** in your browser.
+
+### 4. Running the Automated Test Suite
+
+```bash
+# From project directory:
+cd project
+python -m unittest discover tests
+```
 
 ### 2. Clone the Repository
 ```bash
