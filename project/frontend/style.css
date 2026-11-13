@@ -1549,11 +1549,45 @@ body.theme-light .speech-error-toast {
     transform: scaleX(-1); /* Natural mirror preview */
 }
 
+.asl-skeleton-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1); /* Mirror to align with mirrored preview */
+    z-index: 4;
+}
+
 .asl-video-overlay {
     position: absolute;
     top: 10px;
     left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
     z-index: 5;
+}
+
+.asl-latency-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.02em;
 }
 
 /* ── Hold Progress Track ───────────────────────────────────────────────── */
@@ -1817,5 +1851,55 @@ body.theme-light .speech-error-toast {
     }
     .asl-send-btn {
         justify-content: center;
+    }
+}
+
+
+/* ── ASL Footer Hints & Keyboard Badges ─────────────────────────────────── */
+.asl-footer-hint-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.asl-kb-hints {
+    font-size: 0.72rem;
+    color: var(--text-sub, #94a3b8);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.asl-kb-hints kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 0.68rem;
+    font-family: inherit;
+    font-weight: 600;
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.28);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* ── Tactile Button Micro-Interactions (Emil Kowalski Design Standard) ─── */
+.asl-control-btn:active:not(:disabled),
+.asl-action-btn:active:not(:disabled),
+.asl-send-btn:active:not(:disabled),
+.asl-mode-btn:active:not(:disabled),
+.asl-close-btn:active {
+    transform: scale(0.97) !important;
+    transition: transform 0.08s ease-out;
+}
+
+/* ── Accessibility: Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
     }
 }

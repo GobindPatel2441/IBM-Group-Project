@@ -47,6 +47,10 @@ class ASLSession:
         self.rolling_predictions: deque = deque(maxlen=5)
         self.rolling_confidences: deque = deque(maxlen=5)
 
+        # Adaptive EMA smoothing state for skeletal landmarks
+        self.smoothed_landmarks: Optional[np.ndarray] = None
+        self.smoothed_hand_landmarks: Optional[np.ndarray] = None
+
         # Prediction and history log
         self.prediction_history: List[Dict[str, Any]] = []
 
@@ -61,10 +65,68 @@ class ASLSession:
             self.seq_buffer.clear()
             self.sentence_builder.clear()
             self.prev_landmarks = None
+            self.smoothed_landmarks = None
+            self.smoothed_hand_landmarks = None
             self.is_signing = False
             self.rolling_predictions.clear()
             self.rolling_confidences.clear()
             self.touch()
+
+    def smooth_hand_landmarks(self, landmarks: np.ndarray, base_alpha: float = 0.75) -> np.ndarray:
+        """
+        Adaptive Exponential Moving Average (EMA) filter on 126 hand landmarks.
+        Dynamically adjusts smoothing: steadier when holding still, responsive when moving.
+        """
+        if landmarks is None or len(landmarks) == 0:
+            return landmarks
+        if np.sum(np.abs(landmarks)) == 0:
+            self.smoothed_hand_landmarks = None
+            return landmarks
+
+        if self.smoothed_hand_landmarks is None or self.smoothed_hand_landmarks.shape != landmarks.shape:
+            self.smoothed_hand_landmarks = landmarks.copy()
+            return landmarks
+
+        delta = float(np.abs(landmarks - self.smoothed_hand_landmarks).mean())
+        # If moving fast (high delta), trust new frame (alpha -> 0.95); if steady, smooth heavily (alpha -> 0.60)
+        alpha = min(0.95, max(0.60, base_alpha + delta * 6.0))
+        self.smoothed_hand_landmarks = alpha * landmarks + (1.0 - alpha) * self.smoothed_hand_landmarks
+        return self.smoothed_hand_landmarks.astype(np.float32)
+
+    def smooth_full_landmarks(self, landmarks: np.ndarray, base_alpha: float = 0.78) -> np.ndarray:
+        """
+        Adaptive Exponential Moving Average (EMA) filter on 225 full landmarks.
+        Prevents jitter in 32-frame sequences while maintaining dynamic stroke fidelity.
+        """
+        if landmarks is None or len(landmarks) == 0:
+            return landmarks
+        if np.sum(np.abs(landmarks[:126])) == 0:
+            self.smoothed_landmarks = None
+            return landmarks
+
+        if self.smoothed_landmarks is None or self.smoothed_landmarks.shape != landmarks.shape:
+            self.smoothed_landmarks = landmarks.copy()
+            return landmarks
+
+        delta = float(np.abs(landmarks[:126] - self.smoothed_landmarks[:126]).mean())
+        alpha = min(0.96, max(0.65, base_alpha + delta * 5.0))
+        self.smoothed_landmarks = alpha * landmarks + (1.0 - alpha) * self.smoothed_landmarks
+        return self.smoothed_landmarks.astype(np.float32)
+
+    @staticmethod
+    def compute_normalized_entropy(probs: np.ndarray) -> float:
+        """
+        Compute Shannon entropy normalized to [0, 1].
+        Values close to 1.0 indicate high uncertainty (uniform guessing).
+        Values close to 0.0 indicate high confidence in a specific class.
+        """
+        if probs is None or len(probs) <= 1:
+            return 1.0
+        p = np.clip(probs, 1e-12, 1.0)
+        p = p / np.sum(p)
+        entropy = -float(np.sum(p * np.log2(p)))
+        max_entropy = float(np.log2(len(p)))
+        return float(entropy / max_entropy) if max_entropy > 0 else 1.0
 
     def add_prediction(self, word: str, conf: float) -> Tuple[str, float, bool]:
         """

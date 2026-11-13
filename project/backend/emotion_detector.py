@@ -10,6 +10,8 @@ from .utils import (
     get_polarity,
     polarity_gate,
     suppress_secondary_emotions,
+    normalize_text_affect,
+    compute_valence_arousal,
 )
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -83,13 +85,16 @@ def _load_primary_classifier():
 
 
 def detect_emotion_svr(text: str, original_text: str = None):
-    """SVR-based emotion detection model pipeline."""
+    """SVR-based emotion detection model pipeline with emoji & slang normalization."""
     _load_models()
     _load_primary_classifier()
 
+    # Normalize emojis, contractions, and internet affective slang
+    text_clean = normalize_text_affect(text)
+
     # Fallback heuristic path if SVR models fail to load
     if not _models or not _vectorizers:
-        polarity = get_polarity(text)
+        polarity = get_polarity(text_clean)
         scores = {emo: 0.1 for emo in EMOTIONS}
 
         if polarity == "positive":
@@ -109,7 +114,9 @@ def detect_emotion_svr(text: str, original_text: str = None):
             if emphasis >= 2:
                 intensity = min(1.0, intensity + 0.15)
 
-        if intensity < _NEUTRAL_THRESHOLD or len(text.split()) <= _SHORT_TEXT_MAX_WORDS:
+        dimensions = compute_valence_arousal(final_scores)
+
+        if intensity < _NEUTRAL_THRESHOLD or len(text_clean.split()) <= _SHORT_TEXT_MAX_WORDS:
             dominant = "neutral"
             intensity = round(intensity, 3)
             severity = intensity_to_severity(intensity)
@@ -118,6 +125,7 @@ def detect_emotion_svr(text: str, original_text: str = None):
                 "severity": severity,
                 "intensity": intensity,
                 "all": {k: round(v, 3) for k, v in final_scores.items()},
+                "dimensions": dimensions,
             }
 
         severity = intensity_to_severity(intensity)
@@ -127,10 +135,11 @@ def detect_emotion_svr(text: str, original_text: str = None):
             "severity": severity,
             "intensity": round(intensity, 3),
             "all": {k: round(v, 3) for k, v in final_scores.items()},
+            "dimensions": dimensions,
         }
 
     # Full SVR model-based path
-    text_proc = handle_negation(text)
+    text_proc = handle_negation(text_clean)
 
     raw = {}
     for emo in EMOTIONS:
@@ -157,13 +166,16 @@ def detect_emotion_svr(text: str, original_text: str = None):
         if emphasis >= 2:
             intensity = min(1.0, intensity + 0.15)
 
-    if intensity < _NEUTRAL_THRESHOLD or len(text.split()) <= _SHORT_TEXT_MAX_WORDS:
+    dimensions = compute_valence_arousal(final_scores)
+
+    if intensity < _NEUTRAL_THRESHOLD or len(text_clean.split()) <= _SHORT_TEXT_MAX_WORDS:
         severity = intensity_to_severity(intensity)
         return {
             "primary": "neutral",
             "severity": severity,
             "intensity": round(intensity, 3),
             "all": {k: round(clip_intensity(v), 3) for k, v in final_scores.items()},
+            "dimensions": dimensions,
         }
 
     severity = intensity_to_severity(intensity)
@@ -173,6 +185,7 @@ def detect_emotion_svr(text: str, original_text: str = None):
         "severity": severity,
         "intensity": round(intensity, 3),
         "all": {k: round(clip_intensity(v), 3) for k, v in final_scores.items()},
+        "dimensions": dimensions,
     }
 
 

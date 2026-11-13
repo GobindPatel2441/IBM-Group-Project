@@ -96,3 +96,73 @@ def wants_affirmation_only(text: str) -> bool:
         "just support me"
     ]
     return any(t in text for t in triggers)
+
+# ── EMOJI & COLLOQUIAL AFFECT NORMALIZATION ──────────────────────────────
+_EMOJI_SLANG_MAP = {
+    "😭": " crying heartbroken ",
+    "😢": " crying sad ",
+    "🥺": " pleading vulnerable ",
+    "😞": " sad disappointed ",
+    "😔": " depressed down ",
+    "😡": " furious angry ",
+    "🤬": " swearing outraged ",
+    "😠": " mad irritated ",
+    "😱": " shocked terrified ",
+    "😨": " scared panicked ",
+    "😰": " anxious nervous ",
+    "😊": " warm happy ",
+    "😄": " cheerful delighted ",
+    "❤️": " loving grateful ",
+    "💖": " caring affectionate ",
+    "✨": " hopeful inspired ",
+    "🎉": " celebrating excited ",
+    "smh": " shaking my head disappointed ",
+    "fml": " feeling terrible distressed ",
+    "lmao": " laughing delighted ",
+    "rofl": " laughing happy ",
+    "lol": " laughing amused ",
+    "idk": " confused uncertain ",
+    "tbh": " to be honest ",
+}
+
+def normalize_text_affect(text: str) -> str:
+    """
+    Expands emojis, abbreviations, and affective slang into canonical English
+    phrases to maximize emotion classifier fidelity.
+    """
+    if not text:
+        return ""
+    proc = text
+    for token, expansion in _EMOJI_SLANG_MAP.items():
+        if token in proc:
+            proc = proc.replace(token, expansion)
+    return " ".join(proc.split())
+
+def compute_valence_arousal(scores: dict) -> dict:
+    """
+    Computes Russell's Circumplex Model coordinates from categorical emotions:
+    - Valence: [-1.0 (unpleasant/negative) to +1.0 (pleasant/positive)]
+    - Arousal: [0.0 (calm/deactivated) to 1.0 (excited/activated)]
+    """
+    joy = float(scores.get("joy", 0.0))
+    love = float(scores.get("love", 0.0))
+    anger = float(scores.get("anger", 0.0))
+    fear = float(scores.get("fear", 0.0))
+    sadness = float(scores.get("sadness", 0.0))
+
+    # Valence: positive emotions minus negative emotions
+    pos_weight = (joy * 1.0) + (love * 0.9)
+    neg_weight = (anger * 0.8) + (fear * 0.85) + (sadness * 0.95)
+    valence = clip_intensity(pos_weight - neg_weight)
+    # Scale from [0, 1] difference to [-1.0, 1.0]
+    valence_bipolar = max(-1.0, min(1.0, float(pos_weight - neg_weight)))
+
+    # Arousal: activation level
+    arousal = (anger * 0.85) + (fear * 0.80) + (joy * 0.65) + (sadness * 0.25)
+    arousal = clip_intensity(arousal)
+
+    return {
+        "valence": round(valence_bipolar, 3),
+        "arousal": round(arousal, 3),
+    }
+

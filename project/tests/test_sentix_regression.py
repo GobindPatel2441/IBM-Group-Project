@@ -40,6 +40,27 @@ class TestSentixRegression(unittest.TestCase):
         self.assertIn("status", data)
         self.assertIn("provider", data)
 
+    def test_health_telemetry_endpoint(self):
+        res = self.client.get("/api/health")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data.get("status"), "ok")
+        self.assertIn("subsystems", data)
+        self.assertIn("hardware", data)
+        self.assertIn("llm", data["subsystems"])
+        self.assertIn("asl_recognition", data["subsystems"])
+        self.assertIn("emotion_classifier", data["subsystems"])
+        self.assertIn("translation", data["subsystems"])
+
+    def test_emotion_dimensions_and_emojis(self):
+        # Emojis expand to canonical affect words
+        res = detect_emotion("I got the job! 🎉❤️😊")
+        self.assertIn("primary", res)
+        self.assertIn("dimensions", res)
+        self.assertIn("valence", res["dimensions"])
+        self.assertIn("arousal", res["dimensions"])
+        self.assertGreaterEqual(res["dimensions"]["valence"], 0.0)
+
     def test_safety_filter(self):
         # High risk text triggers intervention
         high_risk = "I want to end my life and hurt myself"

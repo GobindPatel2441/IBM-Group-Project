@@ -19,10 +19,10 @@
     let cachedApiBase = null;
 
     // DOM Elements Cache
-    let modalEl, backdropEl, previewVideo, previewCanvas;
+    let modalEl, backdropEl, previewVideo, previewCanvas, skeletonCanvas;
     let modeAlphaBtn, modeWordBtn, startBtn, stopBtn;
     let livePredEl, confValEl, confBarEl, holdBarEl, holdContainerEl;
-    let statusBadgeEl, handBadgeEl, top5ListEl, sentenceBoxEl;
+    let statusBadgeEl, handBadgeEl, latencyBadgeEl, top5ListEl, sentenceBoxEl;
     let spaceBtn, undoBtn, clearBtn, sendToSentixBtn;
 
     // ── Helper: Resolve API Base URL ─────────────────────────────────────────
@@ -54,6 +54,7 @@
         backdropEl = document.getElementById("asl-modal-backdrop");
         previewVideo = document.getElementById("asl-webcam-preview");
         previewCanvas = document.getElementById("asl-capture-canvas");
+        skeletonCanvas = document.getElementById("asl-skeleton-canvas");
 
         modeAlphaBtn = document.getElementById("asl-mode-alpha");
         modeWordBtn = document.getElementById("asl-mode-word");
@@ -68,6 +69,7 @@
 
         statusBadgeEl = document.getElementById("asl-status-badge");
         handBadgeEl = document.getElementById("asl-hand-badge");
+        latencyBadgeEl = document.getElementById("asl-latency-badge");
         top5ListEl = document.getElementById("asl-top5-list");
         sentenceBoxEl = document.getElementById("asl-sentence-box");
 
@@ -113,14 +115,29 @@
         if (clearBtn) clearBtn.addEventListener("click", () => doClear());
         if (sendToSentixBtn) sendToSentixBtn.addEventListener("click", () => sendToSentix());
 
-        // Keyboard navigation inside modal
+        // Comprehensive Keyboard shortcuts for hands-free signing workflow
         document.addEventListener("keydown", (e) => {
             if (!modalEl || modalEl.classList.contains("hidden")) return;
+            const target = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+            if (target === "input" || target === "textarea") return;
+
             if (e.key === "Escape") {
                 closeAslModal();
-            } else if (e.code === "Space" && e.target === document.body) {
+            } else if (e.code === "Space") {
                 e.preventDefault();
                 doSpace();
+            } else if (e.key === "Backspace") {
+                e.preventDefault();
+                doUndo();
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                sendToSentix();
+            } else if (e.key === "1") {
+                setMode("alphabet");
+            } else if (e.key === "2") {
+                setMode("word");
+            } else if (e.key === "c" || e.key === "C") {
+                doClear();
             }
         });
     }
@@ -325,6 +342,19 @@
     function renderInferenceResult(data) {
         if (!data || !data.success) return;
 
+        // Latency metric badge
+        if (latencyBadgeEl && typeof data.latency_ms === "number") {
+            latencyBadgeEl.textContent = `${data.latency_ms} ms`;
+        }
+
+        // Live skeletal keypoint overlay on video preview
+        if (data.keypoints) {
+            renderSkeletonOverlay(data.keypoints);
+        } else if (skeletonCanvas) {
+            const ctx = skeletonCanvas.getContext("2d");
+            ctx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
+        }
+
         // Hand presence and sign validity status
         if (handBadgeEl) {
             if (!data.has_hand) {
@@ -390,6 +420,84 @@
             } else {
                 sentenceBoxEl.classList.remove("has-content");
             }
+        }
+    }
+
+    // ── Real-Time Skeletal HUD Canvas Rendering ──────────────────────────────
+    function renderSkeletonOverlay(keypoints) {
+        if (!skeletonCanvas || !previewVideo) return;
+        const ctx = skeletonCanvas.getContext("2d");
+        const w = skeletonCanvas.width = previewVideo.videoWidth || 640;
+        const h = skeletonCanvas.height = previewVideo.videoHeight || 480;
+
+        ctx.clearRect(0, 0, w, h);
+        if (!keypoints || !keypoints.has_skeleton) return;
+
+        function drawLines(pts, pairs, strokeStyle) {
+            ctx.save();
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.shadowColor = strokeStyle;
+            ctx.shadowBlur = 8;
+            pairs.forEach(([i, j]) => {
+                const p1 = pts[i];
+                const p2 = pts[j];
+                if (p1 && p2 && (p1[0] !== 0 || p1[1] !== 0) && (p2[0] !== 0 || p2[1] !== 0)) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1[0] * w, p1[1] * h);
+                    ctx.lineTo(p2[0] * w, p2[1] * h);
+                    ctx.stroke();
+                }
+            });
+            ctx.restore();
+        }
+
+        function drawPoints(pts, fillStyle) {
+            ctx.save();
+            ctx.fillStyle = fillStyle;
+            ctx.shadowColor = fillStyle;
+            ctx.shadowBlur = 10;
+            pts.forEach((p) => {
+                if (p && (p[0] !== 0 || p[1] !== 0)) {
+                    ctx.beginPath();
+                    ctx.arc(p[0] * w, p[1] * h, 3.5, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+            ctx.restore();
+        }
+
+        const HAND_BONES = [
+            [0, 1], [1, 2], [2, 3], [3, 4],          // Thumb
+            [0, 5], [5, 6], [6, 7], [7, 8],          // Index
+            [5, 9], [9, 10], [10, 11], [11, 12],     // Middle
+            [9, 13], [13, 14], [14, 15], [15, 16],   // Ring
+            [13, 17], [17, 18], [18, 19], [19, 20],  // Pinky
+            [0, 17]                                  // Palm base
+        ];
+
+        // Draw Right Hand (Electric Cyan)
+        if (keypoints.right_hand && keypoints.right_hand.length === 21) {
+            drawLines(keypoints.right_hand, HAND_BONES, "rgba(56, 189, 248, 0.85)");
+            drawPoints(keypoints.right_hand, "#38bdf8");
+        }
+
+        // Draw Left Hand (Vibrant Violet)
+        if (keypoints.left_hand && keypoints.left_hand.length === 21) {
+            drawLines(keypoints.left_hand, HAND_BONES, "rgba(192, 132, 252, 0.85)");
+            drawPoints(keypoints.left_hand, "#c084fc");
+        }
+
+        // Draw Upper Body Pose Lines (Emerald Green)
+        if (keypoints.upper_body && keypoints.upper_body.length >= 17) {
+            const POSE_BONES = [
+                [11, 12],          // Shoulders
+                [11, 13], [13, 15], // Left arm
+                [12, 14], [14, 16], // Right arm
+            ];
+            drawLines(keypoints.upper_body, POSE_BONES, "rgba(52, 211, 153, 0.7)");
+            drawPoints(keypoints.upper_body.slice(11, 17), "#34d399");
         }
     }
 

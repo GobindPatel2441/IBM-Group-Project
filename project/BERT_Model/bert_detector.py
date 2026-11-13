@@ -19,6 +19,8 @@ from backend.utils import (
     get_polarity,
     polarity_gate,
     suppress_secondary_emotions,
+    normalize_text_affect,
+    compute_valence_arousal,
 )
 
 EMOTIONS = ["anger", "fear", "joy", "sadness"]
@@ -96,9 +98,12 @@ def detect_emotion_bert(text: str, original_text: str = None):
     """
     success = load_bert_model()
 
+    # Normalize emojis, colloquial contractions, and affective slang
+    text_clean = normalize_text_affect(text)
+
     # Fallback to heuristic if BERT model failed to load
     if not success or _bert_model is None or _bert_tokenizer is None:
-        polarity = get_polarity(text)
+        polarity = get_polarity(text_clean)
         scores = {emo: 0.1 for emo in ALL_EMOTIONS}
         if polarity == "positive":
             scores["joy"] = 0.9
@@ -117,7 +122,9 @@ def detect_emotion_bert(text: str, original_text: str = None):
             if emphasis >= 2:
                 intensity = min(1.0, intensity + 0.15)
 
-        if intensity < _NEUTRAL_THRESHOLD or len(text.split()) <= _SHORT_TEXT_MAX_WORDS:
+        dimensions = compute_valence_arousal(final_scores)
+
+        if intensity < _NEUTRAL_THRESHOLD or len(text_clean.split()) <= _SHORT_TEXT_MAX_WORDS:
             dominant = "neutral"
 
         severity = intensity_to_severity(intensity)
@@ -126,10 +133,11 @@ def detect_emotion_bert(text: str, original_text: str = None):
             "severity": severity,
             "intensity": round(intensity, 3),
             "all": {k: round(v, 3) for k, v in final_scores.items()},
+            "dimensions": dimensions,
         }
 
     # Preprocess text (with optional negation handling)
-    text_proc = handle_negation(text)
+    text_proc = handle_negation(text_clean)
 
     # Tokenize input text for BERT
     inputs = _bert_tokenizer(
@@ -173,14 +181,17 @@ def detect_emotion_bert(text: str, original_text: str = None):
         if emphasis >= 2:
             intensity = min(1.0, intensity + 0.15)
 
+    dimensions = compute_valence_arousal(final_scores)
+
     # Neutral override check for short or low-confidence inputs
-    if intensity < _NEUTRAL_THRESHOLD or len(text.split()) <= _SHORT_TEXT_MAX_WORDS:
+    if intensity < _NEUTRAL_THRESHOLD or len(text_clean.split()) <= _SHORT_TEXT_MAX_WORDS:
         severity = intensity_to_severity(intensity)
         return {
             "primary": "neutral",
             "severity": severity,
             "intensity": round(intensity, 3),
             "all": {k: round(clip_intensity(v), 3) for k, v in final_scores.items()},
+            "dimensions": dimensions,
         }
 
     severity = intensity_to_severity(intensity)
@@ -189,6 +200,7 @@ def detect_emotion_bert(text: str, original_text: str = None):
         "severity": severity,
         "intensity": round(intensity, 3),
         "all": {k: round(clip_intensity(v), 3) for k, v in final_scores.items()},
+        "dimensions": dimensions,
     }
 
 

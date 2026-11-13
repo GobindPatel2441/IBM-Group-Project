@@ -27,7 +27,7 @@ from backend.asl.config import (
 from backend.asl.alphabet_model import FingerspellingMLP
 from backend.asl.word_model import PoseTransformer
 from backend.asl.sentence_builder import SentenceBuilder
-from backend.asl.session_manager import SessionManager
+from backend.asl.session_manager import SessionManager, ASLSession
 from backend.asl.asl_service import ASLService
 
 
@@ -237,6 +237,50 @@ class TestASLEndpoints(unittest.TestCase):
         self.assertEqual(res.get_json().get("sentence"), "")
 
         self.client.post("/asl/stop", json={"session_id": sess_id})
+
+    def test_landmark_smoothing_and_entropy(self):
+        sess = ASLSession("test-smooth-sess", mode="alphabet")
+        raw_lm = np.random.randn(126).astype(np.float32)
+
+        # First smoothing creates baseline
+        smoothed_1 = sess.smooth_hand_landmarks(raw_lm)
+        self.assertEqual(smoothed_1.shape, (126,))
+
+        # Slight jitter input
+        jittered = raw_lm + 0.05 * np.random.randn(126).astype(np.float32)
+        smoothed_2 = sess.smooth_hand_landmarks(jittered)
+
+        # EMA smoothing should damp the change
+        diff_raw = np.abs(jittered - raw_lm).mean()
+        diff_smoothed = np.abs(smoothed_2 - smoothed_1).mean()
+        self.assertLessEqual(diff_smoothed, diff_raw * 1.5)
+
+        # Entropy test
+        sharp_probs = np.array([0.98, 0.01, 0.01], dtype=np.float32)
+        uniform_probs = np.array([0.333, 0.333, 0.333], dtype=np.float32)
+        h_sharp = sess.compute_normalized_entropy(sharp_probs)
+        h_uniform = sess.compute_normalized_entropy(uniform_probs)
+        self.assertLess(h_sharp, 0.2)
+        self.assertGreater(h_uniform, 0.95)
+
+    def test_frame_keypoints_and_latency(self):
+        img = np.zeros((240, 320, 3), dtype=np.uint8)
+        _, buf = cv2.imencode(".jpg", img)
+        b64_str = "data:image/jpeg;base64," + base64.b64encode(buf).decode("utf-8")
+
+        res = self.client.post(
+            "/asl/frame",
+            json={
+                "session_id": "test-diag-sess",
+                "image": b64_str,
+                "mode": "alphabet"
+            }
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIn("keypoints", data)
+        self.assertIn("latency_ms", data)
+        self.assertIsInstance(data["latency_ms"], (int, float))
 
 
 if __name__ == "__main__":

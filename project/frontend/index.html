@@ -196,8 +196,10 @@
         <div class="asl-camera-card">
             <div class="asl-video-container">
                 <video id="asl-webcam-preview" autoplay playsinline muted></video>
+                <canvas id="asl-skeleton-canvas" class="asl-skeleton-overlay"></canvas>
                 <div class="asl-video-overlay">
                     <span id="asl-hand-badge" class="asl-badge badge-no-hand">✋ No Hand Detected</span>
+                    <span id="asl-latency-badge" class="asl-latency-pill">0 ms</span>
                 </div>
             </div>
             <!-- Progress / Hold Stabilization Bar -->
@@ -223,7 +225,7 @@
                     <div id="asl-confidence-bar" class="asl-progress-fill" style="width: 0%;"></div>
                 </div>
                 <div class="asl-display-pill">
-                    <span id="asl-live-prediction" class="asl-char-display">—</span>
+                    <span id="asl-live-prediction" class="asl-char-display" aria-live="polite">—</span>
                 </div>
             </div>
 
@@ -237,9 +239,9 @@
         <div class="asl-sentence-header">
             <span class="asl-card-title">Recognized Sentence</span>
             <div class="asl-sentence-actions">
-                <button id="asl-space-btn" class="asl-action-btn" type="button" title="Insert Space">␣ Space</button>
-                <button id="asl-undo-btn" class="asl-action-btn" type="button" title="Undo Last Token">⌫ Undo</button>
-                <button id="asl-clear-btn" class="asl-action-btn btn-danger" type="button" title="Clear All">🗑 Clear</button>
+                <button id="asl-space-btn" class="asl-action-btn" type="button" title="Insert Space (Space)">␣ Space</button>
+                <button id="asl-undo-btn" class="asl-action-btn" type="button" title="Undo Last Token (Backspace)">⌫ Undo</button>
+                <button id="asl-clear-btn" class="asl-action-btn btn-danger" type="button" title="Clear All (C)">🗑 Clear</button>
             </div>
         </div>
         <div id="asl-sentence-box" class="asl-sentence-display">Recognized sentence will appear here...</div>
@@ -247,7 +249,10 @@
 
     <!-- Modal Footer / Primary Action -->
     <div class="asl-modal-footer">
-        <span class="asl-footer-hint">Recognized sign language text will be sent to the Sentix chatbot.</span>
+        <div class="asl-footer-hint-wrapper">
+            <span class="asl-footer-hint">Recognized signs stream directly into the Sentix conversational pipeline.</span>
+            <span class="asl-kb-hints"><kbd>Space</kbd> Space &nbsp;•&nbsp; <kbd>⌫</kbd> Undo &nbsp;•&nbsp; <kbd>Enter</kbd> Send &nbsp;•&nbsp; <kbd>1</kbd>/<kbd>2</kbd> Mode &nbsp;•&nbsp; <kbd>Esc</kbd> Close</span>
+        </div>
         <button id="asl-send-to-sentix-btn" class="asl-send-btn" type="button">
             <span>Send to Sentix</span>
             <span class="asl-send-arrow">➤</span>

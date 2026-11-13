@@ -19,3 +19,6 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
 # ── OpenAI ───────────────────────────────────────────────────────────
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+
+# ── Emotion Model ─────────────────────────────────────────────────────
+EMOTION_MODEL_TYPE = os.getenv("EMOTION_MODEL_TYPE", "bert").strip().lower()

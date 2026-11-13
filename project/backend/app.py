@@ -38,6 +38,32 @@ FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'fr
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
 
+@app.after_request
+def add_security_headers(response):
+    """Enforce defense-in-depth security and caching headers."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({"success": False, "error": "Bad request", "details": str(e)}), 400
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({"success": False, "error": "HTTP Method not allowed"}), 405
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error("Internal Server Error: %s", e)
+    return jsonify({"success": False, "error": "Internal server error"}), 500
+
 @app.route('/')
 def index():
     return send_from_directory(FRONTEND_DIR, 'index.html')
@@ -80,12 +106,16 @@ def _split_sentences(text: str):
 def chat():
     t_total = time.time()
 
-    user_text = request.json.get("message", "")
-    history = request.json.get("history", [])
-    language = request.json.get("language", "English")
-    image_b64 = request.json.get("image", None)
-    audio_b64 = request.json.get("audio", None)
-    source = request.json.get("source", None)
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"success": False, "error": "Invalid JSON request body"}), 400
+
+    user_text = body.get("message", "")
+    history = body.get("history", [])
+    language = body.get("language", "English")
+    image_b64 = body.get("image", None)
+    audio_b64 = body.get("audio", None)
+    source = body.get("source", None)
 
     # ── Facial Emotion Detection ────────────────────────────────────
     facial_emotion = None
@@ -267,6 +297,53 @@ def status():
     return jsonify({
         "status": "online" if online else "offline",
         "provider": LLM_PROVIDER,
+    })
+
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    """
+    Comprehensive diagnostics and health telemetry endpoint.
+    Reports operational status of all multimodal subsystems:
+    LLM, Emotion Classification, ASL Recognition, Translation, and Compute Device.
+    """
+    import torch
+    import sys
+    from .asl import asl_service
+    from .config import LLM_PROVIDER, EMOTION_MODEL_TYPE
+
+    asl_inst = asl_service.ASLService.get_instance()
+    asl_diag = asl_inst.get_status()
+
+    return jsonify({
+        "status": "ok",
+        "service": "SENTIX Multimodal Companion",
+        "timestamp": time.time(),
+        "subsystems": {
+            "llm": {
+                "provider": LLM_PROVIDER,
+            },
+            "emotion_classifier": {
+                "engine": EMOTION_MODEL_TYPE,
+                "classes": ["anger", "fear", "joy", "sadness", "neutral"],
+            },
+            "asl_recognition": {
+                "ready": asl_diag.get("ready", False),
+                "alphabet_classes": asl_diag.get("alphabet_classes", 0),
+                "word_classes": asl_diag.get("word_classes", 0),
+                "active_sessions": asl_diag.get("active_sessions", 0),
+            },
+            "translation": {
+                "supported_languages": len(SUPPORTED_LANGUAGES),
+            },
+        },
+        "hardware": {
+            "device": str(asl_inst.device),
+            "cuda_available": torch.cuda.is_available(),
+            "device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU",
+            "python_version": sys.version.split()[0],
+            "torch_version": torch.__version__,
+        }
     })
 
 

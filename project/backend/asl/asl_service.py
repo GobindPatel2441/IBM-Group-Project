@@ -192,6 +192,34 @@ class ASLService:
     # Alias for compatibility with routes and tests
     decode_frame = decode_image
 
+    def _format_keypoints_for_display(self, full_lm: np.ndarray) -> Dict[str, Any]:
+        """
+        Convert flat 225-dim skeletal landmark vector into 2D coordinates
+        optimized for real-time frontend skeleton canvas rendering.
+        """
+        if full_lm is None or len(full_lm) < 225:
+            return {"has_skeleton": False}
+
+        has_hands = bool(float(np.sum(np.abs(full_lm[:126]))) > 0)
+        if not has_hands:
+            return {"has_skeleton": False}
+
+        # MediaPipe coordinates are normalized [0.0, 1.0]
+        right_pts = [[round(float(full_lm[i]), 4), round(float(full_lm[i + 1]), 4)] for i in range(0, 63, 3)]
+        left_pts = [[round(float(full_lm[i]), 4), round(float(full_lm[i + 1]), 4)] for i in range(63, 126, 3)]
+        pose_pts = [[round(float(full_lm[i]), 4), round(float(full_lm[i + 1]), 4)] for i in range(126, 225, 3)]
+
+        has_right = any(p[0] != 0 or p[1] != 0 for p in right_pts)
+        has_left = any(p[0] != 0 or p[1] != 0 for p in left_pts)
+
+        return {
+            "has_skeleton": True,
+            "right_hand": right_pts if has_right else [],
+            "left_hand": left_pts if has_left else [],
+            # Upper body keypoints: shoulders (11, 12), elbows (13, 14), wrists (15, 16)
+            "upper_body": pose_pts[:17] if len(pose_pts) >= 17 else [],
+        }
+
     def predict_letter(
         self, hand_landmarks: np.ndarray
     ) -> Tuple[str, float, List[Dict[str, Any]]]:
@@ -268,6 +296,8 @@ class ASLService:
     ) -> Dict[str, Any]:
         """
         Process a webcam frame within a user session context.
+        Applies adaptive EMA landmark filtering, entropy-aware gesture gating,
+        and provides formatted skeletal keypoints for HUD rendering.
         """
         session = self.session_manager.get_or_create_session(session_id=session_id, mode=mode)
         session.set_mode(mode)
@@ -281,15 +311,23 @@ class ASLService:
             }
 
         # ── Landmark Extraction ──────────────────────────────────────────
-        hand_lm = self.extractor.extract_hand_landmarks(frame_rgb)
-        full_lm = self.extractor.extract_full_landmarks(frame_rgb)
+        raw_hand_lm = self.extractor.extract_hand_landmarks(frame_rgb)
+        raw_full_lm = self.extractor.extract_full_landmarks(frame_rgb)
 
-        has_hand = bool(float(np.sum(np.abs(hand_lm))) > 0)
+        has_hand = bool(float(np.sum(np.abs(raw_hand_lm))) > 0)
+
+        # ── Adaptive EMA Jitter Smoothing ────────────────────────────────
+        hand_lm = session.smooth_hand_landmarks(raw_hand_lm) if has_hand else raw_hand_lm
+        full_lm = session.smooth_full_landmarks(raw_full_lm) if has_hand else raw_full_lm
+
         session.sentence_builder.update_hand_presence(has_hand, now=now)
         is_moving = session.update_motion(full_lm, now=now)
 
         # Append to temporal sequence buffer for word recognition
         session.seq_buffer.append(full_lm)
+
+        # Extract structured skeletal keypoints for live frontend canvas
+        keypoints = self._format_keypoints_for_display(full_lm)
 
         # ── Mode-Specific Recognition ───────────────────────────────────
         if session.mode == "alphabet":
@@ -299,6 +337,7 @@ class ASLService:
             )
 
             stable = bool(hold_progress >= 1.0 or accepted)
+            latency_ms = round((time.time() - now) * 1000, 1)
 
             return {
                 "success": True,
@@ -311,6 +350,8 @@ class ASLService:
                 "hold_progress": float(round(hold_progress, 2)),
                 "has_hand": has_hand,
                 "top_predictions": top_preds,
+                "keypoints": keypoints,
+                "latency_ms": latency_ms,
                 "current_word": session.sentence_builder.get_current_word(),
                 "sentence": session.sentence_builder.get_sentence(),
             }
@@ -351,8 +392,12 @@ class ASLService:
                     else (top5[0]["confidence"] if top5 else 0.0)
                 )
 
-                # Check confidence against calibrated thresholds
-                if raw_conf >= WORD_CONFIDENCE_HIGH and margin >= WORD_CONFIDENCE_MARGIN:
+                # Normalized entropy check across top candidates
+                confs_array = np.array([t["confidence"] for t in top5], dtype=np.float32) if top5 else np.array([1.0])
+                entropy = session.compute_normalized_entropy(confs_array)
+
+                # Check confidence & entropy against calibrated thresholds
+                if raw_conf >= WORD_CONFIDENCE_HIGH and margin >= WORD_CONFIDENCE_MARGIN and entropy <= 0.85:
                     smoothed_word, smoothed_conf, is_consensus = session.add_prediction(raw_word_upper, raw_conf)
                     if is_consensus:
                         word = smoothed_word
@@ -373,6 +418,8 @@ class ASLService:
                     display_prediction = "Uncertain Sign"
                     conf = raw_conf
 
+            latency_ms = round((time.time() - now) * 1000, 1)
+
             return {
                 "success": True,
                 "session_id": session.session_id,
@@ -385,6 +432,8 @@ class ASLService:
                 "has_hand": has_hand,
                 "is_moving": is_moving,
                 "top_predictions": top5,
+                "keypoints": keypoints,
+                "latency_ms": latency_ms,
                 "current_word": session.sentence_builder.get_current_word(),
                 "sentence": session.sentence_builder.get_sentence(),
             }
