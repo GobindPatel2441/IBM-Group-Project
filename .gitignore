@@ -7,26 +7,9 @@ venv/
 *.onnx
 
 # Project specific ignores
-asl_complete_system/
-Dataset/
 Model/
 Translator Model/
-Facial Emotion Detector/
 BERT_Model/fine_tuned_bert/
-allfiles.txt
-assets/
 
-# Auxiliary datasets, experiments & report scratch
-ASL_USE/
-scratch/
-SENTIX_REPORT_EVIDENCE_PACK/
-PROJECT_ANALYSIS_FOR_REPORT.md
-PROJECT_FACTS_AND_METRICS.md
-SENTIX_System_Design.drawio
-SENTIX_System_Design.png
-backend/asl/models/word/backup_previous/
-backend/asl/models/word/experiments/
-backend/asl/models/word/training_data/
-backend/asl/models/word/class_comparison_results.json
-backend/asl/models/word/per_class_metrics.json
-backend/asl/models/word/test_evaluation_metrics.json
+# Reference folder (offline datasets, videos, legacy repos, scratch & reports)
+Reference/
